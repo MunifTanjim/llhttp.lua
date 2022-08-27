@@ -1,0 +1,9 @@
+.luacheckcache
+
+/luarocks
+/lua_modules
+/.luarocks
+/lua
+
+llhttp-*.rock*
+llhttp-*.tar.gz
