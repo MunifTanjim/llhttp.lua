@@ -9,3 +9,6 @@
 
 llhttp-*.rock*
 llhttp-*.tar.gz
+
+llhttp/**/*.o
+llhttp/**/*.so

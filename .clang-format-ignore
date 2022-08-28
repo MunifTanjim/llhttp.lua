@@ -1,0 +1,4 @@
+# generated files
+llhttp/core/api.*
+llhttp/core/http.*
+llhttp/core/llhttp.*
