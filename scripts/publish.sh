@@ -1,32 +1,14 @@
 #!/usr/bin/env bash
 
-set -eu
+set -euo pipefail
 
-declare -r package="llhttp"
+declare ROOT_DIR
+ROOT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 
-declare version="${1:-}"
-declare rockspec_version="${version}"
+source "${ROOT_DIR}/_helper.sh"
 
-if [[ -z "${version}" ]]; then
-  echo "missing version" >&2
-  exit 1
-fi
-
-if [[ "${version}" != *"-"* ]]; then
-  rockspec_version="${version}-1"
-else
-  version="${version%%-*}"
-fi
-
-if [[ ! "${version}" =~ ^[0-9]+.[0-9]+.[0-9]+$ ]]; then
-  echo "invalid version: ${version}" >&2
-  exit 1
-fi
-
-if [[ ! "${rockspec_version}" =~ ^${version}-[1-9]{1,}$ ]]; then
-  echo "invalid rockspec version: ${rockspec_version}" >&2
-  exit 1
-fi
+declare rockspec_version
+rockspec_version="$(get_rockspec_version "${1:-}")"
 
 shift
 
@@ -40,8 +22,9 @@ if [[ "$(git rev-parse "${rockspec_version}")" != "$(git rev-parse HEAD)" ]]; th
   exit 1
 fi
 
-declare -r repo_rockspec="${package}.rockspec"
-declare -r rockspec="${package}-${rockspec_version}.rockspec"
+declare repo_rockspec rockspec
+repo_rockspec="$(get_repo_rockspec)"
+rockspec="$(get_rockspec "${rockspec_version}")"
 
 cp "${repo_rockspec}" "${rockspec}"
 
