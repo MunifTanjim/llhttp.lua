@@ -1,48 +1,32 @@
 #!/usr/bin/env bash
 
-set -eu
+set -euo pipefail
 
-declare -r package="llhttp"
+declare ROOT_DIR
+ROOT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 
-declare version="${1:-}"
-declare rockspec_version="${version}"
+source "${ROOT_DIR}/_helper.sh"
 
-if [[ -z "${version}" ]]; then
-  echo "missing version" >&2
-  exit 1
-fi
-
-if [[ "${version}" != *"-"* ]]; then
-  rockspec_version="${version}-1"
-else
-  version="${version%%-*}"
-fi
-
-if [[ ! "${version}" =~ ^[0-9]+.[0-9]+.[0-9]+$ ]]; then
-  echo "invalid version: ${version}" >&2
-  exit 1
-fi
-
-if [[ ! "${rockspec_version}" =~ ^${version}-[1-9]{1,}$ ]]; then
-  echo "invalid rockspec version: ${rockspec_version}" >&2
-  exit 1
-fi
+declare rockspec_version version
+rockspec_version="$(get_rockspec_version "${1:-}")"
+version="$(get_version "${rockspec_version}")"
 
 if test -n "$(git tag -l "${rockspec_version}")"; then
   echo "rockspec version already exists: ${rockspec_version}" >&2
   exit 1
 fi
 
-declare -r repo_rockspec="${package}.rockspec"
-declare -r rockspec="${package}-${rockspec_version}.rockspec"
+declare repo_rockspec rockspec
+repo_rockspec="$(get_repo_rockspec)"
+rockspec="$(get_rockspec "${rockspec_version}")"
 
-./scripts/generate-rockspec.sh "${rockspec_version}"
+"${ROOT_DIR}/generate-rockspec.sh" "${rockspec_version}"
 
 luarocks make --no-install "${rockspec}"
 
 cp "${rockspec}" "${repo_rockspec}"
 
-git add ${repo_rockspec}
+git add "${repo_rockspec}"
 
 git commit -m "chore: release ${rockspec_version}"
 
