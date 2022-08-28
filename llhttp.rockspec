@@ -20,5 +20,19 @@ build = {
   type = "builtin",
   modules = {
     ["llhttp"] = "llhttp/init.lua",
+    ["llhttp.core"] = {
+      sources = {
+        "llhttp/core/api.c",
+        "llhttp/core/http.c",
+        "llhttp/core/llhttp.c",
+        "llhttp/core/main.c",
+      },
+      defines = {
+        "LLHTTP_STRICT_MODE",
+      },
+      incdirs = {
+        "llhttp",
+      },
+    },
   },
 }
