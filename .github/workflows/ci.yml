@@ -82,3 +82,47 @@ jobs:
         run: |
           ./scripts/generate-rockspec.sh dev-1
           luarocks make --no-install llhttp-dev-1.rockspec
+
+  publish:
+    name: publish
+    runs-on: ubuntu-20.04
+    if: github.ref_type == 'tag'
+    needs:
+      - lint
+      - format
+      - build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Get Version
+        id: lua-llhttp-version
+        run: |
+          echo "::set-output name=value::${GITHUB_REF_NAME}"
+      - name: Get Cache Key
+        id: luver-cache-key
+        env:
+          CI_RUNNER_OS: ${{ runner.os }}
+          CI_SECRETS_CACHE_VERSION: ${{ secrets.CACHE_VERSION }}
+        run: |
+          echo "::set-output name=value::${CI_RUNNER_OS}-luver-${CI_SECRETS_CACHE_VERSION}-publish-$(date -u +%Y-%m-%d)"
+        shell: bash
+      - name: Setup Cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.local/share/luver
+          key: ${{ steps.luver-cache-key.outputs.value }}
+      - name: Setup Lua
+        uses: MunifTanjim/luver-action@v1
+        with:
+          default: 5.1.5
+          lua_versions: 5.1.5
+          luajit_versions: 5.1.5:2.1.0-git
+          luarocks_versions: 5.1.5:3.8.0
+      - name: Publish
+        env:
+          LUA_LLHTTP_VERSION: ${{ steps.lua-llhttp-version.outputs.value }}
+          LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
+          LUAROCKS_UPLOAD_FORCE: ${{ secrets.LUAROCKS_UPLOAD_FORCE }}
+        run: |
+          luarocks install lua-cjson
+          ./scripts/publish.sh ${LUA_LLHTTP_VERSION}
