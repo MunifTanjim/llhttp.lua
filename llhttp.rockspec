@@ -1,9 +1,9 @@
 rockspec_format = "3.0"
 package = "llhttp"
-version = "0.0.0"
+version = "0.0.1-1"
 source = {
   url = "git+https://github.com/MunifTanjim/llhttp.lua.git",
-  tag = "0.0.0",
+  tag = "0.0.1",
 }
 description = {
   summary = "Lua interface for llhttp.",
