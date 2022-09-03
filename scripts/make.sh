@@ -25,3 +25,8 @@ echo
 
 echo "luarocks make..."
 luarocks make --no-install "${rockspec}"
+echo
+
+echo "generating enum..."
+"${ROOT_DIR}/generate-enum.sh"
+echo

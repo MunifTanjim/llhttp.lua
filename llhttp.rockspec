@@ -34,5 +34,6 @@ build = {
         "llhttp",
       },
     },
+    ["llhttp.enum"] = "llhttp/enum.lua",
   },
 }
