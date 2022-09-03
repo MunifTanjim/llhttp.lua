@@ -7,6 +7,7 @@ declare -a enum_names=(
   "llhttp_type"
   "llhttp_method"
   "llhttp_status"
+  "lua_llhttp_pause_cause"
 )
 
 declare -A enum_constant_prefix=()
@@ -14,18 +15,21 @@ enum_constant_prefix[llhttp_errno]="HPE"
 enum_constant_prefix[llhttp_type]="HTTP"
 enum_constant_prefix[llhttp_method]="HTTP"
 enum_constant_prefix[llhttp_status]="HTTP_STATUS"
+enum_constant_prefix[lua_llhttp_pause_cause]="PAUSE_CAUSE"
 
 declare -A enum_constant_file=()
 enum_constant_file[llhttp_errno]="./llhttp/core/llhttp.h"
 enum_constant_file[llhttp_type]="./llhttp/core/llhttp.h"
 enum_constant_file[llhttp_method]="./llhttp/core/llhttp.h"
 enum_constant_file[llhttp_status]="./llhttp/core/llhttp.h"
+enum_constant_file[lua_llhttp_pause_cause]="./llhttp/core/main.c"
 
 declare -A enum_group_name=()
 enum_group_name[llhttp_errno]="errno"
 enum_group_name[llhttp_type]="type"
 enum_group_name[llhttp_method]="method"
 enum_group_name[llhttp_status]="status"
+enum_group_name[lua_llhttp_pause_cause]="pause_cause"
 
 generate_enum_tables() {
   echo "local enum = {"
