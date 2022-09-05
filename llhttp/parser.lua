@@ -119,9 +119,6 @@ function Parser:execute(buf)
     elseif pause_cause == enum.pause_cause.STATUS_COMPLETED then
       self._completed_status = true
     elseif pause_cause == enum.pause_cause.HEADERS_COMPLETED then
-      -- upstream issue: https://github.com/nodejs/llhttp/issues/187
-      self._completed_status = true
-
       self._completed_headers = true
     end
   end
