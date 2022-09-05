@@ -1,0 +1,638 @@
+local ffi = require("ffi")
+
+ffi.cdef([[
+// START:CDEF:ENUM
+
+enum llhttp_errno {
+  HPE_OK = 0,
+  HPE_INTERNAL = 1,
+  HPE_STRICT = 2,
+  HPE_CR_EXPECTED = 25,
+  HPE_LF_EXPECTED = 3,
+  HPE_UNEXPECTED_CONTENT_LENGTH = 4,
+  HPE_UNEXPECTED_SPACE = 30,
+  HPE_CLOSED_CONNECTION = 5,
+  HPE_INVALID_METHOD = 6,
+  HPE_INVALID_URL = 7,
+  HPE_INVALID_CONSTANT = 8,
+  HPE_INVALID_VERSION = 9,
+  HPE_INVALID_HEADER_TOKEN = 10,
+  HPE_INVALID_CONTENT_LENGTH = 11,
+  HPE_INVALID_CHUNK_SIZE = 12,
+  HPE_INVALID_STATUS = 13,
+  HPE_INVALID_EOF_STATE = 14,
+  HPE_INVALID_TRANSFER_ENCODING = 15,
+  HPE_CB_MESSAGE_BEGIN = 16,
+  HPE_CB_HEADERS_COMPLETE = 17,
+  HPE_CB_MESSAGE_COMPLETE = 18,
+  HPE_CB_CHUNK_HEADER = 19,
+  HPE_CB_CHUNK_COMPLETE = 20,
+  HPE_PAUSED = 21,
+  HPE_PAUSED_UPGRADE = 22,
+  HPE_PAUSED_H2_UPGRADE = 23,
+  HPE_USER = 24,
+  HPE_CB_URL_COMPLETE = 26,
+  HPE_CB_STATUS_COMPLETE = 27,
+  HPE_CB_HEADER_FIELD_COMPLETE = 28,
+  HPE_CB_HEADER_VALUE_COMPLETE = 29
+};
+typedef enum llhttp_errno llhttp_errno_t;
+
+enum llhttp_type {
+  HTTP_BOTH = 0,
+  HTTP_REQUEST = 1,
+  HTTP_RESPONSE = 2
+};
+typedef enum llhttp_type llhttp_type_t;
+
+enum llhttp_method {
+  HTTP_DELETE = 0,
+  HTTP_GET = 1,
+  HTTP_HEAD = 2,
+  HTTP_POST = 3,
+  HTTP_PUT = 4,
+  HTTP_CONNECT = 5,
+  HTTP_OPTIONS = 6,
+  HTTP_TRACE = 7,
+  HTTP_COPY = 8,
+  HTTP_LOCK = 9,
+  HTTP_MKCOL = 10,
+  HTTP_MOVE = 11,
+  HTTP_PROPFIND = 12,
+  HTTP_PROPPATCH = 13,
+  HTTP_SEARCH = 14,
+  HTTP_UNLOCK = 15,
+  HTTP_BIND = 16,
+  HTTP_REBIND = 17,
+  HTTP_UNBIND = 18,
+  HTTP_ACL = 19,
+  HTTP_REPORT = 20,
+  HTTP_MKACTIVITY = 21,
+  HTTP_CHECKOUT = 22,
+  HTTP_MERGE = 23,
+  HTTP_MSEARCH = 24,
+  HTTP_NOTIFY = 25,
+  HTTP_SUBSCRIBE = 26,
+  HTTP_UNSUBSCRIBE = 27,
+  HTTP_PATCH = 28,
+  HTTP_PURGE = 29,
+  HTTP_MKCALENDAR = 30,
+  HTTP_LINK = 31,
+  HTTP_UNLINK = 32,
+  HTTP_SOURCE = 33,
+  HTTP_PRI = 34,
+  HTTP_DESCRIBE = 35,
+  HTTP_ANNOUNCE = 36,
+  HTTP_SETUP = 37,
+  HTTP_PLAY = 38,
+  HTTP_PAUSE = 39,
+  HTTP_TEARDOWN = 40,
+  HTTP_GET_PARAMETER = 41,
+  HTTP_SET_PARAMETER = 42,
+  HTTP_REDIRECT = 43,
+  HTTP_RECORD = 44,
+  HTTP_FLUSH = 45
+};
+typedef enum llhttp_method llhttp_method_t;
+
+enum llhttp_status {
+  HTTP_STATUS_CONTINUE = 100,
+  HTTP_STATUS_SWITCHING_PROTOCOLS = 101,
+  HTTP_STATUS_PROCESSING = 102,
+  HTTP_STATUS_EARLY_HINTS = 103,
+  HTTP_STATUS_OK = 200,
+  HTTP_STATUS_CREATED = 201,
+  HTTP_STATUS_ACCEPTED = 202,
+  HTTP_STATUS_NON_AUTHORITATIVE_INFORMATION = 203,
+  HTTP_STATUS_NO_CONTENT = 204,
+  HTTP_STATUS_RESET_CONTENT = 205,
+  HTTP_STATUS_PARTIAL_CONTENT = 206,
+  HTTP_STATUS_MULTI_STATUS = 207,
+  HTTP_STATUS_ALREADY_REPORTED = 208,
+  HTTP_STATUS_IM_USED = 226,
+  HTTP_STATUS_MULTIPLE_CHOICES = 300,
+  HTTP_STATUS_MOVED_PERMANENTLY = 301,
+  HTTP_STATUS_FOUND = 302,
+  HTTP_STATUS_SEE_OTHER = 303,
+  HTTP_STATUS_NOT_MODIFIED = 304,
+  HTTP_STATUS_USE_PROXY = 305,
+  HTTP_STATUS_TEMPORARY_REDIRECT = 307,
+  HTTP_STATUS_PERMANENT_REDIRECT = 308,
+  HTTP_STATUS_BAD_REQUEST = 400,
+  HTTP_STATUS_UNAUTHORIZED = 401,
+  HTTP_STATUS_PAYMENT_REQUIRED = 402,
+  HTTP_STATUS_FORBIDDEN = 403,
+  HTTP_STATUS_NOT_FOUND = 404,
+  HTTP_STATUS_METHOD_NOT_ALLOWED = 405,
+  HTTP_STATUS_NOT_ACCEPTABLE = 406,
+  HTTP_STATUS_PROXY_AUTHENTICATION_REQUIRED = 407,
+  HTTP_STATUS_REQUEST_TIMEOUT = 408,
+  HTTP_STATUS_CONFLICT = 409,
+  HTTP_STATUS_GONE = 410,
+  HTTP_STATUS_LENGTH_REQUIRED = 411,
+  HTTP_STATUS_PRECONDITION_FAILED = 412,
+  HTTP_STATUS_PAYLOAD_TOO_LARGE = 413,
+  HTTP_STATUS_URI_TOO_LONG = 414,
+  HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE = 415,
+  HTTP_STATUS_RANGE_NOT_SATISFIABLE = 416,
+  HTTP_STATUS_EXPECTATION_FAILED = 417,
+  HTTP_STATUS_IM_A_TEAPOT = 418,
+  HTTP_STATUS_MISDIRECTED_REQUEST = 421,
+  HTTP_STATUS_UNPROCESSABLE_ENTITY = 422,
+  HTTP_STATUS_LOCKED = 423,
+  HTTP_STATUS_FAILED_DEPENDENCY = 424,
+  HTTP_STATUS_TOO_EARLY = 425,
+  HTTP_STATUS_UPGRADE_REQUIRED = 426,
+  HTTP_STATUS_PRECONDITION_REQUIRED = 428,
+  HTTP_STATUS_TOO_MANY_REQUESTS = 429,
+  HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
+  HTTP_STATUS_UNAVAILABLE_FOR_LEGAL_REASONS = 451,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR = 500,
+  HTTP_STATUS_NOT_IMPLEMENTED = 501,
+  HTTP_STATUS_BAD_GATEWAY = 502,
+  HTTP_STATUS_SERVICE_UNAVAILABLE = 503,
+  HTTP_STATUS_GATEWAY_TIMEOUT = 504,
+  HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED = 505,
+  HTTP_STATUS_VARIANT_ALSO_NEGOTIATES = 506,
+  HTTP_STATUS_INSUFFICIENT_STORAGE = 507,
+  HTTP_STATUS_LOOP_DETECTED = 508,
+  HTTP_STATUS_BANDWITH_LIMIT_EXCEEDED = 509,
+  HTTP_STATUS_NOT_EXTENDED = 510,
+  HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED = 511
+};
+typedef enum llhttp_status llhttp_status_t;
+
+// END:CDEF:ENUM
+
+struct llhttp__internal_s {
+  int32_t _index;
+  void* _span_pos0;
+  void* _span_cb0;
+  int32_t error;
+  const char* reason;
+  const char* error_pos;
+  void* data;
+  void* _current;
+  uint64_t content_length;
+  uint8_t type;
+  uint8_t method;
+  uint8_t http_major;
+  uint8_t http_minor;
+  uint8_t header_state;
+  uint8_t lenient_flags;
+  uint8_t upgrade;
+  uint8_t finish;
+  uint16_t flags;
+  uint16_t status_code;
+  void* settings;
+};
+typedef struct llhttp__internal_s llhttp__internal_t;
+typedef llhttp__internal_t llhttp_t;
+
+typedef int (*llhttp_data_cb)(llhttp_t*, const char *at, size_t length);
+typedef int (*llhttp_cb)(llhttp_t*);
+
+struct llhttp_settings_s {
+  llhttp_cb      on_message_begin;
+  llhttp_data_cb on_url;
+  llhttp_data_cb on_status;
+  llhttp_data_cb on_header_field;
+  llhttp_data_cb on_header_value;
+  llhttp_cb      on_headers_complete;
+  llhttp_data_cb on_body;
+  llhttp_cb      on_message_complete;
+  llhttp_cb      on_chunk_header;
+  llhttp_cb      on_chunk_complete;
+  llhttp_cb      on_url_complete;
+  llhttp_cb      on_status_complete;
+  llhttp_cb      on_header_field_complete;
+  llhttp_cb      on_header_value_complete;
+};
+typedef struct llhttp_settings_s llhttp_settings_t;
+
+void llhttp_init(llhttp_t* parser, llhttp_type_t type,
+                 const llhttp_settings_t* settings);
+llhttp_t* llhttp_alloc(llhttp_type_t type);
+void llhttp_free(llhttp_t* parser);
+uint8_t llhttp_get_type(llhttp_t* parser);
+uint8_t llhttp_get_http_major(llhttp_t* parser);
+uint8_t llhttp_get_http_minor(llhttp_t* parser);
+uint8_t llhttp_get_method(llhttp_t* parser);
+int llhttp_get_status_code(llhttp_t* parser);
+uint8_t llhttp_get_upgrade(llhttp_t* parser);
+void llhttp_reset(llhttp_t* parser);
+
+void llhttp_settings_init(llhttp_settings_t* settings);
+
+llhttp_errno_t llhttp_execute(llhttp_t* parser, const char* data, size_t len);
+llhttp_errno_t llhttp_finish(llhttp_t* parser);
+int llhttp_message_needs_eof(const llhttp_t* parser);
+int llhttp_should_keep_alive(const llhttp_t* parser);
+void llhttp_pause(llhttp_t* parser);
+void llhttp_resume(llhttp_t* parser);
+void llhttp_resume_after_upgrade(llhttp_t* parser);
+llhttp_errno_t llhttp_get_errno(const llhttp_t* parser);
+const char* llhttp_get_error_reason(const llhttp_t* parser);
+void llhttp_set_error_reason(llhttp_t* parser, const char* reason);
+const char* llhttp_get_error_pos(const llhttp_t* parser);
+const char* llhttp_errno_name(llhttp_errno_t err);
+const char* llhttp_method_name(llhttp_method_t method);
+void llhttp_set_lenient_headers(llhttp_t* parser, int enabled);
+void llhttp_set_lenient_chunked_length(llhttp_t* parser, int enabled);
+void llhttp_set_lenient_keep_alive(llhttp_t* parser, int enabled);
+void llhttp_set_lenient_transfer_encoding(llhttp_t* parser, int enabled);
+]])
+
+---@diagnostic disable: undefined-field
+
+-- START:ENUM
+
+local enum = {
+
+  --[[ llhttp_errno ]]
+
+  HPE_OK = ffi.C.HPE_OK,
+  HPE_INTERNAL = ffi.C.HPE_INTERNAL,
+  HPE_STRICT = ffi.C.HPE_STRICT,
+  HPE_CR_EXPECTED = ffi.C.HPE_CR_EXPECTED,
+  HPE_LF_EXPECTED = ffi.C.HPE_LF_EXPECTED,
+  HPE_UNEXPECTED_CONTENT_LENGTH = ffi.C.HPE_UNEXPECTED_CONTENT_LENGTH,
+  HPE_UNEXPECTED_SPACE = ffi.C.HPE_UNEXPECTED_SPACE,
+  HPE_CLOSED_CONNECTION = ffi.C.HPE_CLOSED_CONNECTION,
+  HPE_INVALID_METHOD = ffi.C.HPE_INVALID_METHOD,
+  HPE_INVALID_URL = ffi.C.HPE_INVALID_URL,
+  HPE_INVALID_CONSTANT = ffi.C.HPE_INVALID_CONSTANT,
+  HPE_INVALID_VERSION = ffi.C.HPE_INVALID_VERSION,
+  HPE_INVALID_HEADER_TOKEN = ffi.C.HPE_INVALID_HEADER_TOKEN,
+  HPE_INVALID_CONTENT_LENGTH = ffi.C.HPE_INVALID_CONTENT_LENGTH,
+  HPE_INVALID_CHUNK_SIZE = ffi.C.HPE_INVALID_CHUNK_SIZE,
+  HPE_INVALID_STATUS = ffi.C.HPE_INVALID_STATUS,
+  HPE_INVALID_EOF_STATE = ffi.C.HPE_INVALID_EOF_STATE,
+  HPE_INVALID_TRANSFER_ENCODING = ffi.C.HPE_INVALID_TRANSFER_ENCODING,
+  HPE_CB_MESSAGE_BEGIN = ffi.C.HPE_CB_MESSAGE_BEGIN,
+  HPE_CB_HEADERS_COMPLETE = ffi.C.HPE_CB_HEADERS_COMPLETE,
+  HPE_CB_MESSAGE_COMPLETE = ffi.C.HPE_CB_MESSAGE_COMPLETE,
+  HPE_CB_CHUNK_HEADER = ffi.C.HPE_CB_CHUNK_HEADER,
+  HPE_CB_CHUNK_COMPLETE = ffi.C.HPE_CB_CHUNK_COMPLETE,
+  HPE_PAUSED = ffi.C.HPE_PAUSED,
+  HPE_PAUSED_UPGRADE = ffi.C.HPE_PAUSED_UPGRADE,
+  HPE_PAUSED_H2_UPGRADE = ffi.C.HPE_PAUSED_H2_UPGRADE,
+  HPE_USER = ffi.C.HPE_USER,
+  HPE_CB_URL_COMPLETE = ffi.C.HPE_CB_URL_COMPLETE,
+  HPE_CB_STATUS_COMPLETE = ffi.C.HPE_CB_STATUS_COMPLETE,
+  HPE_CB_HEADER_FIELD_COMPLETE = ffi.C.HPE_CB_HEADER_FIELD_COMPLETE,
+  HPE_CB_HEADER_VALUE_COMPLETE = ffi.C.HPE_CB_HEADER_VALUE_COMPLETE,
+
+  --[[ llhttp_type ]]
+
+  HTTP_BOTH = ffi.C.HTTP_BOTH,
+  HTTP_REQUEST = ffi.C.HTTP_REQUEST,
+  HTTP_RESPONSE = ffi.C.HTTP_RESPONSE,
+
+  --[[ llhttp_method ]]
+
+  HTTP_DELETE = ffi.C.HTTP_DELETE,
+  HTTP_GET = ffi.C.HTTP_GET,
+  HTTP_HEAD = ffi.C.HTTP_HEAD,
+  HTTP_POST = ffi.C.HTTP_POST,
+  HTTP_PUT = ffi.C.HTTP_PUT,
+  HTTP_CONNECT = ffi.C.HTTP_CONNECT,
+  HTTP_OPTIONS = ffi.C.HTTP_OPTIONS,
+  HTTP_TRACE = ffi.C.HTTP_TRACE,
+  HTTP_COPY = ffi.C.HTTP_COPY,
+  HTTP_LOCK = ffi.C.HTTP_LOCK,
+  HTTP_MKCOL = ffi.C.HTTP_MKCOL,
+  HTTP_MOVE = ffi.C.HTTP_MOVE,
+  HTTP_PROPFIND = ffi.C.HTTP_PROPFIND,
+  HTTP_PROPPATCH = ffi.C.HTTP_PROPPATCH,
+  HTTP_SEARCH = ffi.C.HTTP_SEARCH,
+  HTTP_UNLOCK = ffi.C.HTTP_UNLOCK,
+  HTTP_BIND = ffi.C.HTTP_BIND,
+  HTTP_REBIND = ffi.C.HTTP_REBIND,
+  HTTP_UNBIND = ffi.C.HTTP_UNBIND,
+  HTTP_ACL = ffi.C.HTTP_ACL,
+  HTTP_REPORT = ffi.C.HTTP_REPORT,
+  HTTP_MKACTIVITY = ffi.C.HTTP_MKACTIVITY,
+  HTTP_CHECKOUT = ffi.C.HTTP_CHECKOUT,
+  HTTP_MERGE = ffi.C.HTTP_MERGE,
+  HTTP_MSEARCH = ffi.C.HTTP_MSEARCH,
+  HTTP_NOTIFY = ffi.C.HTTP_NOTIFY,
+  HTTP_SUBSCRIBE = ffi.C.HTTP_SUBSCRIBE,
+  HTTP_UNSUBSCRIBE = ffi.C.HTTP_UNSUBSCRIBE,
+  HTTP_PATCH = ffi.C.HTTP_PATCH,
+  HTTP_PURGE = ffi.C.HTTP_PURGE,
+  HTTP_MKCALENDAR = ffi.C.HTTP_MKCALENDAR,
+  HTTP_LINK = ffi.C.HTTP_LINK,
+  HTTP_UNLINK = ffi.C.HTTP_UNLINK,
+  HTTP_SOURCE = ffi.C.HTTP_SOURCE,
+  HTTP_PRI = ffi.C.HTTP_PRI,
+  HTTP_DESCRIBE = ffi.C.HTTP_DESCRIBE,
+  HTTP_ANNOUNCE = ffi.C.HTTP_ANNOUNCE,
+  HTTP_SETUP = ffi.C.HTTP_SETUP,
+  HTTP_PLAY = ffi.C.HTTP_PLAY,
+  HTTP_PAUSE = ffi.C.HTTP_PAUSE,
+  HTTP_TEARDOWN = ffi.C.HTTP_TEARDOWN,
+  HTTP_GET_PARAMETER = ffi.C.HTTP_GET_PARAMETER,
+  HTTP_SET_PARAMETER = ffi.C.HTTP_SET_PARAMETER,
+  HTTP_REDIRECT = ffi.C.HTTP_REDIRECT,
+  HTTP_RECORD = ffi.C.HTTP_RECORD,
+  HTTP_FLUSH = ffi.C.HTTP_FLUSH,
+
+  --[[ llhttp_status ]]
+
+  HTTP_STATUS_CONTINUE = ffi.C.HTTP_STATUS_CONTINUE,
+  HTTP_STATUS_SWITCHING_PROTOCOLS = ffi.C.HTTP_STATUS_SWITCHING_PROTOCOLS,
+  HTTP_STATUS_PROCESSING = ffi.C.HTTP_STATUS_PROCESSING,
+  HTTP_STATUS_EARLY_HINTS = ffi.C.HTTP_STATUS_EARLY_HINTS,
+  HTTP_STATUS_OK = ffi.C.HTTP_STATUS_OK,
+  HTTP_STATUS_CREATED = ffi.C.HTTP_STATUS_CREATED,
+  HTTP_STATUS_ACCEPTED = ffi.C.HTTP_STATUS_ACCEPTED,
+  HTTP_STATUS_NON_AUTHORITATIVE_INFORMATION = ffi.C.HTTP_STATUS_NON_AUTHORITATIVE_INFORMATION,
+  HTTP_STATUS_NO_CONTENT = ffi.C.HTTP_STATUS_NO_CONTENT,
+  HTTP_STATUS_RESET_CONTENT = ffi.C.HTTP_STATUS_RESET_CONTENT,
+  HTTP_STATUS_PARTIAL_CONTENT = ffi.C.HTTP_STATUS_PARTIAL_CONTENT,
+  HTTP_STATUS_MULTI_STATUS = ffi.C.HTTP_STATUS_MULTI_STATUS,
+  HTTP_STATUS_ALREADY_REPORTED = ffi.C.HTTP_STATUS_ALREADY_REPORTED,
+  HTTP_STATUS_IM_USED = ffi.C.HTTP_STATUS_IM_USED,
+  HTTP_STATUS_MULTIPLE_CHOICES = ffi.C.HTTP_STATUS_MULTIPLE_CHOICES,
+  HTTP_STATUS_MOVED_PERMANENTLY = ffi.C.HTTP_STATUS_MOVED_PERMANENTLY,
+  HTTP_STATUS_FOUND = ffi.C.HTTP_STATUS_FOUND,
+  HTTP_STATUS_SEE_OTHER = ffi.C.HTTP_STATUS_SEE_OTHER,
+  HTTP_STATUS_NOT_MODIFIED = ffi.C.HTTP_STATUS_NOT_MODIFIED,
+  HTTP_STATUS_USE_PROXY = ffi.C.HTTP_STATUS_USE_PROXY,
+  HTTP_STATUS_TEMPORARY_REDIRECT = ffi.C.HTTP_STATUS_TEMPORARY_REDIRECT,
+  HTTP_STATUS_PERMANENT_REDIRECT = ffi.C.HTTP_STATUS_PERMANENT_REDIRECT,
+  HTTP_STATUS_BAD_REQUEST = ffi.C.HTTP_STATUS_BAD_REQUEST,
+  HTTP_STATUS_UNAUTHORIZED = ffi.C.HTTP_STATUS_UNAUTHORIZED,
+  HTTP_STATUS_PAYMENT_REQUIRED = ffi.C.HTTP_STATUS_PAYMENT_REQUIRED,
+  HTTP_STATUS_FORBIDDEN = ffi.C.HTTP_STATUS_FORBIDDEN,
+  HTTP_STATUS_NOT_FOUND = ffi.C.HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_METHOD_NOT_ALLOWED = ffi.C.HTTP_STATUS_METHOD_NOT_ALLOWED,
+  HTTP_STATUS_NOT_ACCEPTABLE = ffi.C.HTTP_STATUS_NOT_ACCEPTABLE,
+  HTTP_STATUS_PROXY_AUTHENTICATION_REQUIRED = ffi.C.HTTP_STATUS_PROXY_AUTHENTICATION_REQUIRED,
+  HTTP_STATUS_REQUEST_TIMEOUT = ffi.C.HTTP_STATUS_REQUEST_TIMEOUT,
+  HTTP_STATUS_CONFLICT = ffi.C.HTTP_STATUS_CONFLICT,
+  HTTP_STATUS_GONE = ffi.C.HTTP_STATUS_GONE,
+  HTTP_STATUS_LENGTH_REQUIRED = ffi.C.HTTP_STATUS_LENGTH_REQUIRED,
+  HTTP_STATUS_PRECONDITION_FAILED = ffi.C.HTTP_STATUS_PRECONDITION_FAILED,
+  HTTP_STATUS_PAYLOAD_TOO_LARGE = ffi.C.HTTP_STATUS_PAYLOAD_TOO_LARGE,
+  HTTP_STATUS_URI_TOO_LONG = ffi.C.HTTP_STATUS_URI_TOO_LONG,
+  HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE = ffi.C.HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE,
+  HTTP_STATUS_RANGE_NOT_SATISFIABLE = ffi.C.HTTP_STATUS_RANGE_NOT_SATISFIABLE,
+  HTTP_STATUS_EXPECTATION_FAILED = ffi.C.HTTP_STATUS_EXPECTATION_FAILED,
+  HTTP_STATUS_IM_A_TEAPOT = ffi.C.HTTP_STATUS_IM_A_TEAPOT,
+  HTTP_STATUS_MISDIRECTED_REQUEST = ffi.C.HTTP_STATUS_MISDIRECTED_REQUEST,
+  HTTP_STATUS_UNPROCESSABLE_ENTITY = ffi.C.HTTP_STATUS_UNPROCESSABLE_ENTITY,
+  HTTP_STATUS_LOCKED = ffi.C.HTTP_STATUS_LOCKED,
+  HTTP_STATUS_FAILED_DEPENDENCY = ffi.C.HTTP_STATUS_FAILED_DEPENDENCY,
+  HTTP_STATUS_TOO_EARLY = ffi.C.HTTP_STATUS_TOO_EARLY,
+  HTTP_STATUS_UPGRADE_REQUIRED = ffi.C.HTTP_STATUS_UPGRADE_REQUIRED,
+  HTTP_STATUS_PRECONDITION_REQUIRED = ffi.C.HTTP_STATUS_PRECONDITION_REQUIRED,
+  HTTP_STATUS_TOO_MANY_REQUESTS = ffi.C.HTTP_STATUS_TOO_MANY_REQUESTS,
+  HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE = ffi.C.HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE,
+  HTTP_STATUS_UNAVAILABLE_FOR_LEGAL_REASONS = ffi.C.HTTP_STATUS_UNAVAILABLE_FOR_LEGAL_REASONS,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR = ffi.C.HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  HTTP_STATUS_NOT_IMPLEMENTED = ffi.C.HTTP_STATUS_NOT_IMPLEMENTED,
+  HTTP_STATUS_BAD_GATEWAY = ffi.C.HTTP_STATUS_BAD_GATEWAY,
+  HTTP_STATUS_SERVICE_UNAVAILABLE = ffi.C.HTTP_STATUS_SERVICE_UNAVAILABLE,
+  HTTP_STATUS_GATEWAY_TIMEOUT = ffi.C.HTTP_STATUS_GATEWAY_TIMEOUT,
+  HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED = ffi.C.HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED,
+  HTTP_STATUS_VARIANT_ALSO_NEGOTIATES = ffi.C.HTTP_STATUS_VARIANT_ALSO_NEGOTIATES,
+  HTTP_STATUS_INSUFFICIENT_STORAGE = ffi.C.HTTP_STATUS_INSUFFICIENT_STORAGE,
+  HTTP_STATUS_LOOP_DETECTED = ffi.C.HTTP_STATUS_LOOP_DETECTED,
+  HTTP_STATUS_BANDWITH_LIMIT_EXCEEDED = ffi.C.HTTP_STATUS_BANDWITH_LIMIT_EXCEEDED,
+  HTTP_STATUS_NOT_EXTENDED = ffi.C.HTTP_STATUS_NOT_EXTENDED,
+  HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED = ffi.C.HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED,
+}
+
+enum.errno = {
+  OK = ffi.C.HPE_OK,
+  INTERNAL = ffi.C.HPE_INTERNAL,
+  STRICT = ffi.C.HPE_STRICT,
+  CR_EXPECTED = ffi.C.HPE_CR_EXPECTED,
+  LF_EXPECTED = ffi.C.HPE_LF_EXPECTED,
+  UNEXPECTED_CONTENT_LENGTH = ffi.C.HPE_UNEXPECTED_CONTENT_LENGTH,
+  UNEXPECTED_SPACE = ffi.C.HPE_UNEXPECTED_SPACE,
+  CLOSED_CONNECTION = ffi.C.HPE_CLOSED_CONNECTION,
+  INVALID_METHOD = ffi.C.HPE_INVALID_METHOD,
+  INVALID_URL = ffi.C.HPE_INVALID_URL,
+  INVALID_CONSTANT = ffi.C.HPE_INVALID_CONSTANT,
+  INVALID_VERSION = ffi.C.HPE_INVALID_VERSION,
+  INVALID_HEADER_TOKEN = ffi.C.HPE_INVALID_HEADER_TOKEN,
+  INVALID_CONTENT_LENGTH = ffi.C.HPE_INVALID_CONTENT_LENGTH,
+  INVALID_CHUNK_SIZE = ffi.C.HPE_INVALID_CHUNK_SIZE,
+  INVALID_STATUS = ffi.C.HPE_INVALID_STATUS,
+  INVALID_EOF_STATE = ffi.C.HPE_INVALID_EOF_STATE,
+  INVALID_TRANSFER_ENCODING = ffi.C.HPE_INVALID_TRANSFER_ENCODING,
+  CB_MESSAGE_BEGIN = ffi.C.HPE_CB_MESSAGE_BEGIN,
+  CB_HEADERS_COMPLETE = ffi.C.HPE_CB_HEADERS_COMPLETE,
+  CB_MESSAGE_COMPLETE = ffi.C.HPE_CB_MESSAGE_COMPLETE,
+  CB_CHUNK_HEADER = ffi.C.HPE_CB_CHUNK_HEADER,
+  CB_CHUNK_COMPLETE = ffi.C.HPE_CB_CHUNK_COMPLETE,
+  PAUSED = ffi.C.HPE_PAUSED,
+  PAUSED_UPGRADE = ffi.C.HPE_PAUSED_UPGRADE,
+  PAUSED_H2_UPGRADE = ffi.C.HPE_PAUSED_H2_UPGRADE,
+  USER = ffi.C.HPE_USER,
+  CB_URL_COMPLETE = ffi.C.HPE_CB_URL_COMPLETE,
+  CB_STATUS_COMPLETE = ffi.C.HPE_CB_STATUS_COMPLETE,
+  CB_HEADER_FIELD_COMPLETE = ffi.C.HPE_CB_HEADER_FIELD_COMPLETE,
+  CB_HEADER_VALUE_COMPLETE = ffi.C.HPE_CB_HEADER_VALUE_COMPLETE,
+}
+
+enum.type = {
+  BOTH = ffi.C.HTTP_BOTH,
+  REQUEST = ffi.C.HTTP_REQUEST,
+  RESPONSE = ffi.C.HTTP_RESPONSE,
+}
+
+enum.method = {
+  DELETE = ffi.C.HTTP_DELETE,
+  GET = ffi.C.HTTP_GET,
+  HEAD = ffi.C.HTTP_HEAD,
+  POST = ffi.C.HTTP_POST,
+  PUT = ffi.C.HTTP_PUT,
+  CONNECT = ffi.C.HTTP_CONNECT,
+  OPTIONS = ffi.C.HTTP_OPTIONS,
+  TRACE = ffi.C.HTTP_TRACE,
+  COPY = ffi.C.HTTP_COPY,
+  LOCK = ffi.C.HTTP_LOCK,
+  MKCOL = ffi.C.HTTP_MKCOL,
+  MOVE = ffi.C.HTTP_MOVE,
+  PROPFIND = ffi.C.HTTP_PROPFIND,
+  PROPPATCH = ffi.C.HTTP_PROPPATCH,
+  SEARCH = ffi.C.HTTP_SEARCH,
+  UNLOCK = ffi.C.HTTP_UNLOCK,
+  BIND = ffi.C.HTTP_BIND,
+  REBIND = ffi.C.HTTP_REBIND,
+  UNBIND = ffi.C.HTTP_UNBIND,
+  ACL = ffi.C.HTTP_ACL,
+  REPORT = ffi.C.HTTP_REPORT,
+  MKACTIVITY = ffi.C.HTTP_MKACTIVITY,
+  CHECKOUT = ffi.C.HTTP_CHECKOUT,
+  MERGE = ffi.C.HTTP_MERGE,
+  MSEARCH = ffi.C.HTTP_MSEARCH,
+  NOTIFY = ffi.C.HTTP_NOTIFY,
+  SUBSCRIBE = ffi.C.HTTP_SUBSCRIBE,
+  UNSUBSCRIBE = ffi.C.HTTP_UNSUBSCRIBE,
+  PATCH = ffi.C.HTTP_PATCH,
+  PURGE = ffi.C.HTTP_PURGE,
+  MKCALENDAR = ffi.C.HTTP_MKCALENDAR,
+  LINK = ffi.C.HTTP_LINK,
+  UNLINK = ffi.C.HTTP_UNLINK,
+  SOURCE = ffi.C.HTTP_SOURCE,
+  PRI = ffi.C.HTTP_PRI,
+  DESCRIBE = ffi.C.HTTP_DESCRIBE,
+  ANNOUNCE = ffi.C.HTTP_ANNOUNCE,
+  SETUP = ffi.C.HTTP_SETUP,
+  PLAY = ffi.C.HTTP_PLAY,
+  PAUSE = ffi.C.HTTP_PAUSE,
+  TEARDOWN = ffi.C.HTTP_TEARDOWN,
+  GET_PARAMETER = ffi.C.HTTP_GET_PARAMETER,
+  SET_PARAMETER = ffi.C.HTTP_SET_PARAMETER,
+  REDIRECT = ffi.C.HTTP_REDIRECT,
+  RECORD = ffi.C.HTTP_RECORD,
+  FLUSH = ffi.C.HTTP_FLUSH,
+}
+
+enum.status = {
+  CONTINUE = ffi.C.HTTP_STATUS_CONTINUE,
+  SWITCHING_PROTOCOLS = ffi.C.HTTP_STATUS_SWITCHING_PROTOCOLS,
+  PROCESSING = ffi.C.HTTP_STATUS_PROCESSING,
+  EARLY_HINTS = ffi.C.HTTP_STATUS_EARLY_HINTS,
+  OK = ffi.C.HTTP_STATUS_OK,
+  CREATED = ffi.C.HTTP_STATUS_CREATED,
+  ACCEPTED = ffi.C.HTTP_STATUS_ACCEPTED,
+  NON_AUTHORITATIVE_INFORMATION = ffi.C.HTTP_STATUS_NON_AUTHORITATIVE_INFORMATION,
+  NO_CONTENT = ffi.C.HTTP_STATUS_NO_CONTENT,
+  RESET_CONTENT = ffi.C.HTTP_STATUS_RESET_CONTENT,
+  PARTIAL_CONTENT = ffi.C.HTTP_STATUS_PARTIAL_CONTENT,
+  MULTI_STATUS = ffi.C.HTTP_STATUS_MULTI_STATUS,
+  ALREADY_REPORTED = ffi.C.HTTP_STATUS_ALREADY_REPORTED,
+  IM_USED = ffi.C.HTTP_STATUS_IM_USED,
+  MULTIPLE_CHOICES = ffi.C.HTTP_STATUS_MULTIPLE_CHOICES,
+  MOVED_PERMANENTLY = ffi.C.HTTP_STATUS_MOVED_PERMANENTLY,
+  FOUND = ffi.C.HTTP_STATUS_FOUND,
+  SEE_OTHER = ffi.C.HTTP_STATUS_SEE_OTHER,
+  NOT_MODIFIED = ffi.C.HTTP_STATUS_NOT_MODIFIED,
+  USE_PROXY = ffi.C.HTTP_STATUS_USE_PROXY,
+  TEMPORARY_REDIRECT = ffi.C.HTTP_STATUS_TEMPORARY_REDIRECT,
+  PERMANENT_REDIRECT = ffi.C.HTTP_STATUS_PERMANENT_REDIRECT,
+  BAD_REQUEST = ffi.C.HTTP_STATUS_BAD_REQUEST,
+  UNAUTHORIZED = ffi.C.HTTP_STATUS_UNAUTHORIZED,
+  PAYMENT_REQUIRED = ffi.C.HTTP_STATUS_PAYMENT_REQUIRED,
+  FORBIDDEN = ffi.C.HTTP_STATUS_FORBIDDEN,
+  NOT_FOUND = ffi.C.HTTP_STATUS_NOT_FOUND,
+  METHOD_NOT_ALLOWED = ffi.C.HTTP_STATUS_METHOD_NOT_ALLOWED,
+  NOT_ACCEPTABLE = ffi.C.HTTP_STATUS_NOT_ACCEPTABLE,
+  PROXY_AUTHENTICATION_REQUIRED = ffi.C.HTTP_STATUS_PROXY_AUTHENTICATION_REQUIRED,
+  REQUEST_TIMEOUT = ffi.C.HTTP_STATUS_REQUEST_TIMEOUT,
+  CONFLICT = ffi.C.HTTP_STATUS_CONFLICT,
+  GONE = ffi.C.HTTP_STATUS_GONE,
+  LENGTH_REQUIRED = ffi.C.HTTP_STATUS_LENGTH_REQUIRED,
+  PRECONDITION_FAILED = ffi.C.HTTP_STATUS_PRECONDITION_FAILED,
+  PAYLOAD_TOO_LARGE = ffi.C.HTTP_STATUS_PAYLOAD_TOO_LARGE,
+  URI_TOO_LONG = ffi.C.HTTP_STATUS_URI_TOO_LONG,
+  UNSUPPORTED_MEDIA_TYPE = ffi.C.HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE,
+  RANGE_NOT_SATISFIABLE = ffi.C.HTTP_STATUS_RANGE_NOT_SATISFIABLE,
+  EXPECTATION_FAILED = ffi.C.HTTP_STATUS_EXPECTATION_FAILED,
+  IM_A_TEAPOT = ffi.C.HTTP_STATUS_IM_A_TEAPOT,
+  MISDIRECTED_REQUEST = ffi.C.HTTP_STATUS_MISDIRECTED_REQUEST,
+  UNPROCESSABLE_ENTITY = ffi.C.HTTP_STATUS_UNPROCESSABLE_ENTITY,
+  LOCKED = ffi.C.HTTP_STATUS_LOCKED,
+  FAILED_DEPENDENCY = ffi.C.HTTP_STATUS_FAILED_DEPENDENCY,
+  TOO_EARLY = ffi.C.HTTP_STATUS_TOO_EARLY,
+  UPGRADE_REQUIRED = ffi.C.HTTP_STATUS_UPGRADE_REQUIRED,
+  PRECONDITION_REQUIRED = ffi.C.HTTP_STATUS_PRECONDITION_REQUIRED,
+  TOO_MANY_REQUESTS = ffi.C.HTTP_STATUS_TOO_MANY_REQUESTS,
+  REQUEST_HEADER_FIELDS_TOO_LARGE = ffi.C.HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE,
+  UNAVAILABLE_FOR_LEGAL_REASONS = ffi.C.HTTP_STATUS_UNAVAILABLE_FOR_LEGAL_REASONS,
+  INTERNAL_SERVER_ERROR = ffi.C.HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  NOT_IMPLEMENTED = ffi.C.HTTP_STATUS_NOT_IMPLEMENTED,
+  BAD_GATEWAY = ffi.C.HTTP_STATUS_BAD_GATEWAY,
+  SERVICE_UNAVAILABLE = ffi.C.HTTP_STATUS_SERVICE_UNAVAILABLE,
+  GATEWAY_TIMEOUT = ffi.C.HTTP_STATUS_GATEWAY_TIMEOUT,
+  HTTP_VERSION_NOT_SUPPORTED = ffi.C.HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED,
+  VARIANT_ALSO_NEGOTIATES = ffi.C.HTTP_STATUS_VARIANT_ALSO_NEGOTIATES,
+  INSUFFICIENT_STORAGE = ffi.C.HTTP_STATUS_INSUFFICIENT_STORAGE,
+  LOOP_DETECTED = ffi.C.HTTP_STATUS_LOOP_DETECTED,
+  BANDWITH_LIMIT_EXCEEDED = ffi.C.HTTP_STATUS_BANDWITH_LIMIT_EXCEEDED,
+  NOT_EXTENDED = ffi.C.HTTP_STATUS_NOT_EXTENDED,
+  NETWORK_AUTHENTICATION_REQUIRED = ffi.C.HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED,
+}
+
+-- END:ENUM
+
+---@class libllhttp: ffi.namespace*
+---@field llhttp_init fun(parser: ffi.cdata*, type: integer, settings: ffi.cdata*): nil
+---@field llhttp_alloc fun(type: integer): ffi.cdata*
+---@field llhttp_free fun(parser: ffi.cdata*): nil
+---@field llhttp_get_type fun(parser: ffi.cdata*): integer
+---@field llhttp_get_http_major fun(parser: ffi.cdata*): integer
+---@field llhttp_get_http_minor fun(parser: ffi.cdata*): integer
+---@field llhttp_get_method fun(parser: ffi.cdata*): integer
+---@field llhttp_get_status_code fun(parser: ffi.cdata*): integer
+---@field llhttp_get_upgrade fun(parser: ffi.cdata*): integer
+---@field llhttp_reset fun(parser: ffi.cdata*): nil
+---@field llhttp_settings_init fun(settings: ffi.cdata*): nil
+---@field llhttp_execute fun(parser: ffi.cdata*, data: ffi.cdata*, len: integer): integer
+---@field llhttp_finish fun(parser: ffi.cdata*): integer
+---@field llhttp_message_needs_eof fun(parser: ffi.cdata*): integer
+---@field llhttp_should_keep_alive fun(parser: ffi.cdata*): integer
+---@field llhttp_pause fun(parser: ffi.cdata*): nil
+---@field llhttp_resume fun(parser: ffi.cdata*): nil
+---@field llhttp_resume_after_upgrade fun(parser: ffi.cdata*): nil
+---@field llhttp_get_errno fun(parser: ffi.cdata*): integer
+---@field llhttp_get_error_reason fun(parser: ffi.cdata*): ffi.cdata*
+---@field llhttp_set_error_reason fun(parser: ffi.cdata*, reason: string): nil
+---@field llhttp_get_error_pos fun(parser: ffi.cdata*): ffi.cdata*
+---@field llhttp_errno_name fun(err: integer): ffi.cdata*
+---@field llhttp_method_name fun(method: integer): ffi.cdata*
+---@field llhttp_set_lenient_headers fun(parser: ffi.cdata*, enabled: integer): nil
+---@field llhttp_set_lenient_chunked_length fun(parser: ffi.cdata*, enabled: integer): nil
+---@field llhttp_set_lenient_keep_alive fun(parser: ffi.cdata*, enabled: integer): nil
+---@field llhttp_set_lenient_transfer_encoding fun(parser: ffi.cdata*, enabled: integer): nil
+local lib = nil
+
+---@alias llhttp_data_cb fun(parser: ffi.cdata*, at: ffi.cdata*, length: integer): integer
+---@alias llhttp_cb fun(parser: ffi.cdata*): integer
+
+---@class llhttp_settings
+---@field on_message_begin llhttp_cb
+---@field on_url llhttp_data_cb
+---@field on_status llhttp_data_cb
+---@field on_header_field llhttp_data_cb
+---@field on_header_value llhttp_data_cb
+---@field on_headers_complete llhttp_cb
+---@field on_body llhttp_data_cb
+---@field on_message_complete llhttp_cb
+---@field on_chunk_header llhttp_cb
+---@field on_chunk_complete llhttp_cb
+---@field on_url_complete llhttp_cb
+---@field on_status_complete llhttp_cb
+---@field on_header_field_complete llhttp_cb
+---@field on_header_value_complete llhttp_cb
+
+local ctype = {
+  llhttp = ffi.typeof("llhttp_t"),
+  llhttp_settings = ffi.typeof("llhttp_settings_t"),
+  char_ptr = ffi.typeof("char[?]"),
+}
+
+local mod = {
+  ctype = ctype,
+  enum = enum,
+  lib = lib,
+}
+
+---@param library_path? string
+function mod.load(library_path)
+  if lib then
+    error("already loaded")
+  end
+  lib = ffi.load(library_path or "llhttp")
+  mod.lib = lib
+  mod.load = nil
+  return mod
+end
+
+return mod
