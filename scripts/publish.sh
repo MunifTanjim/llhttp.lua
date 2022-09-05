@@ -3,9 +3,9 @@
 set -euo pipefail
 
 declare ROOT_DIR
-ROOT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+ROOT_DIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 
-source "${ROOT_DIR}/_helper.sh"
+source "${ROOT_DIR}/scripts/_helper.sh"
 
 declare rockspec_version
 rockspec_version="$(get_rockspec_version "${1:-}")"

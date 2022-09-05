@@ -2,7 +2,10 @@
 
 set -euo pipefail
 
-declare -r repo_dir="./.nodejs-llhttp"
+declare ROOT_DIR
+ROOT_DIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
+
+declare -r repo_dir="${ROOT_DIR}/.nodejs-llhttp"
 
 if ! test -d "${repo_dir}"; then
   git clone "https://github.com/nodejs/llhttp.git" "${repo_dir}"
@@ -18,4 +21,12 @@ make generate
 
 popd
 
-cp ${repo_dir}/{build/{llhttp.h,c/llhttp.c},src/native/{api.{c,h},http.c}} llhttp/core/
+cp "${repo_dir}"/{build/{llhttp.h,c/llhttp.c},src/native/{api.{c,h},http.c}} llhttp/core/
+
+echo
+echo "generating 'llhttp.enum'..."
+"${ROOT_DIR}/scripts/generate-enum.sh"
+
+echo
+echo "generating 'llhttp.ffi'..."
+"${ROOT_DIR}/scripts/generate-ffi.sh"

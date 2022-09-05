@@ -3,9 +3,9 @@
 set -euo pipefail
 
 declare ROOT_DIR
-ROOT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+ROOT_DIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 
-source "${ROOT_DIR}/_helper.sh"
+source "${ROOT_DIR}/scripts/_helper.sh"
 
 declare rockspec_version version
 rockspec_version="$(get_rockspec_version "${1:-}")"
@@ -15,7 +15,7 @@ declare rockspec
 rockspec="$(get_rockspec "${rockspec_version}")"
 
 if [[ "${version}" = "dev" ]]; then
-  "${ROOT_DIR}/generate-rockspec.sh" "${rockspec_version}"
+  "${ROOT_DIR}/scripts/generate-rockspec.sh" "${rockspec_version}"
 fi
 
 echo "generating compile_flags.txt..."
@@ -25,8 +25,3 @@ echo
 
 echo "luarocks make..."
 luarocks make --no-install "${rockspec}"
-echo
-
-echo "generating enum..."
-"${ROOT_DIR}/generate-enum.sh"
-echo
