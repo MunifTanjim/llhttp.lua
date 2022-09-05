@@ -67,6 +67,44 @@ print(data.body)
 parser:reset()
 ```
 
+### LuaJIT FFI
+
+```lua
+local ffi = require("ffi")
+
+local llhttp_library_path = "./libllhttp.so"
+local llhttpffi = require("llhttp.ffi").load(llhttp_library_path)
+
+local ctype = llhttpffi.ctype
+local enum = llhttpffi.enum
+local lib = llhttpffi.lib
+
+local llhttp_settings = ctype.llhttp_settings()
+lib.llhttp_settings_init(llhttp_settings)
+
+llhttp_settings.on_message_begin = function()
+  print("on_message_begin")
+  return enum.errno.OK
+end
+
+llhttp_settings.on_message_complete = function()
+  print("on_message_complete")
+  return enum.errno.OK
+end
+
+local llhttp = ctype.llhttp()
+lib.llhttp_init(llhttp, enum.type.REQUEST, llhttp_settings)
+
+local request = "GET / HTTP/1.1\r\n\r\n"
+local buf_len = string.len(request)
+local buf = ctype.char_ptr(buf_len, request)
+
+local err = lib.llhttp_execute(llhttp, buf, buf_len)
+if err ~= enum.errno.OK then
+  print(string.format("error(%s): %s", ffi.string(lib.llhttp_errno_name(err)), ffi.string(llhttp.reason)))
+end
+```
+
 ## License
 
 Licensed under the MIT License. Check the [LICENSE](./LICENSE) file for details.
