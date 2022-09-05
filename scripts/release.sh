@@ -3,9 +3,9 @@
 set -euo pipefail
 
 declare ROOT_DIR
-ROOT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+ROOT_DIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 
-source "${ROOT_DIR}/_helper.sh"
+source "${ROOT_DIR}/scripts/_helper.sh"
 
 declare rockspec_version version
 rockspec_version="$(get_rockspec_version "${1:-}")"
@@ -20,7 +20,7 @@ declare repo_rockspec rockspec
 repo_rockspec="$(get_repo_rockspec)"
 rockspec="$(get_rockspec "${rockspec_version}")"
 
-"${ROOT_DIR}/generate-rockspec.sh" "${rockspec_version}"
+"${ROOT_DIR}/scripts/generate-rockspec.sh" "${rockspec_version}"
 
 luarocks make --no-install "${rockspec}"
 
