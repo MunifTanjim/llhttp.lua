@@ -34,7 +34,8 @@ enum llhttp_errno {
   HPE_CB_URL_COMPLETE = 26,
   HPE_CB_STATUS_COMPLETE = 27,
   HPE_CB_HEADER_FIELD_COMPLETE = 28,
-  HPE_CB_HEADER_VALUE_COMPLETE = 29
+  HPE_CB_HEADER_VALUE_COMPLETE = 29,
+  HPE_CB_RESET = 31
 };
 typedef enum llhttp_errno llhttp_errno_t;
 
@@ -201,12 +202,13 @@ struct llhttp_settings_s {
   llhttp_cb      on_headers_complete;
   llhttp_data_cb on_body;
   llhttp_cb      on_message_complete;
-  llhttp_cb      on_chunk_header;
-  llhttp_cb      on_chunk_complete;
   llhttp_cb      on_url_complete;
   llhttp_cb      on_status_complete;
   llhttp_cb      on_header_field_complete;
   llhttp_cb      on_header_value_complete;
+  llhttp_cb      on_chunk_header;
+  llhttp_cb      on_chunk_complete;
+  llhttp_cb      on_reset;
 };
 typedef struct llhttp_settings_s llhttp_settings_t;
 
@@ -282,6 +284,7 @@ local enum = {
   HPE_CB_STATUS_COMPLETE = ffi.C.HPE_CB_STATUS_COMPLETE,
   HPE_CB_HEADER_FIELD_COMPLETE = ffi.C.HPE_CB_HEADER_FIELD_COMPLETE,
   HPE_CB_HEADER_VALUE_COMPLETE = ffi.C.HPE_CB_HEADER_VALUE_COMPLETE,
+  HPE_CB_RESET = ffi.C.HPE_CB_RESET,
 
   --[[ llhttp_type ]]
 
@@ -437,6 +440,7 @@ enum.errno = {
   CB_STATUS_COMPLETE = ffi.C.HPE_CB_STATUS_COMPLETE,
   CB_HEADER_FIELD_COMPLETE = ffi.C.HPE_CB_HEADER_FIELD_COMPLETE,
   CB_HEADER_VALUE_COMPLETE = ffi.C.HPE_CB_HEADER_VALUE_COMPLETE,
+  CB_RESET = ffi.C.HPE_CB_RESET,
 }
 
 enum.type = {
@@ -605,12 +609,13 @@ local lib = nil
 ---@field on_headers_complete llhttp_cb
 ---@field on_body llhttp_data_cb
 ---@field on_message_complete llhttp_cb
----@field on_chunk_header llhttp_cb
----@field on_chunk_complete llhttp_cb
 ---@field on_url_complete llhttp_cb
 ---@field on_status_complete llhttp_cb
 ---@field on_header_field_complete llhttp_cb
 ---@field on_header_value_complete llhttp_cb
+---@field on_chunk_header llhttp_cb
+---@field on_chunk_complete llhttp_cb
+---@field on_reset llhttp_cb
 
 local ctype = {
   llhttp = ffi.typeof("llhttp_t"),

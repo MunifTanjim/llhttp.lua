@@ -33,6 +33,7 @@ local enum = {
   HPE_CB_STATUS_COMPLETE = 27,
   HPE_CB_HEADER_FIELD_COMPLETE = 28,
   HPE_CB_HEADER_VALUE_COMPLETE = 29,
+  HPE_CB_RESET = 31,
 
   --[[ llhttp_type ]]
 
@@ -198,6 +199,7 @@ enum.errno = {
   CB_STATUS_COMPLETE = 27,
   CB_HEADER_FIELD_COMPLETE = 28,
   CB_HEADER_VALUE_COMPLETE = 29,
+  CB_RESET = 31,
 }
 
 enum.type = {
@@ -363,6 +365,7 @@ enum.errno_name = {
   [27] = "CB_STATUS_COMPLETE",
   [28] = "CB_HEADER_FIELD_COMPLETE",
   [29] = "CB_HEADER_VALUE_COMPLETE",
+  [31] = "CB_RESET",
 }
 
 enum.method_name = {

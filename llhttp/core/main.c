@@ -62,6 +62,7 @@ struct lua_llhttp_s {
     int on_header_value_complete;
     int on_chunk_header;
     int on_chunk_complete;
+    int on_reset;
   } cb_ref;
   lua_llhttp_data_t data;
   lua_State *L;
@@ -180,6 +181,7 @@ DEFINE_LUA_LLHTTP_CALLBACK(on_header_field_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_header_value_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_chunk_header);
 DEFINE_LUA_LLHTTP_CALLBACK(on_chunk_complete);
+DEFINE_LUA_LLHTTP_CALLBACK(on_reset);
 
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_url);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_status);
@@ -264,6 +266,8 @@ int c_on_header_value_complete(llhttp_t *parser) { return 0; }
 int c_on_chunk_header(llhttp_t *parser) { return 0; }
 
 int c_on_chunk_complete(llhttp_t *parser) { return 0; }
+
+int c_on_reset(llhttp_t *parser) { return 0; }
 
 llhttp_settings_t lua_llhttp_c_settings;
 llhttp_settings_t lua_llhttp_lua_settings;
@@ -361,6 +365,7 @@ int lua_llhttp_create_parser(lua_State *L) {
     REGISTER_LUA_LLHTTP_CALLBACK(on_header_value_complete);
     REGISTER_LUA_LLHTTP_CALLBACK(on_chunk_header);
     REGISTER_LUA_LLHTTP_CALLBACK(on_chunk_complete);
+    REGISTER_LUA_LLHTTP_CALLBACK(on_reset);
 
     SET_BOOLEAN_FLAG(lenient_headers);
     SET_BOOLEAN_FLAG(lenient_chunked_length);
@@ -596,6 +601,7 @@ int lua_llhttp__gc(lua_State *L) {
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_header_value_complete);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_chunk_header);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_chunk_complete);
+    UNREGISTER_LUA_LLHTTP_CALLBACK(on_reset);
   } else {
     _lua_llhttp__string_free(lua_llhttp->data.url);
     _lua_llhttp__string_list_free(lua_llhttp->data.headers);
@@ -670,7 +676,8 @@ static const luaL_reg lua_llhttp_funcs[] = {
   lua_llhttp_##LANG##_settings.on_header_value_complete =                      \
       LANG##_on_header_value_complete;                                         \
   lua_llhttp_##LANG##_settings.on_chunk_header = LANG##_on_chunk_header;       \
-  lua_llhttp_##LANG##_settings.on_chunk_complete = LANG##_on_chunk_complete;
+  lua_llhttp_##LANG##_settings.on_chunk_complete = LANG##_on_chunk_complete;   \
+  lua_llhttp_##LANG##_settings.on_reset = LANG##_on_reset;
 
 int luaopen_llhttp_core(lua_State *L) {
   LUA_LLHTTP_SETTINGS_INIT(c);

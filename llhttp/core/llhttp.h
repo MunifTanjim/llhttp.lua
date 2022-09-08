@@ -38,6 +38,7 @@ struct llhttp__internal_s {
   uint8_t finish;
   uint16_t flags;
   uint16_t status_code;
+  uint8_t initial_message_completed;
   void* settings;
 };
 
@@ -86,7 +87,8 @@ enum llhttp_errno {
   HPE_CB_URL_COMPLETE = 26,
   HPE_CB_STATUS_COMPLETE = 27,
   HPE_CB_HEADER_FIELD_COMPLETE = 28,
-  HPE_CB_HEADER_VALUE_COMPLETE = 29
+  HPE_CB_HEADER_VALUE_COMPLETE = 29,
+  HPE_CB_RESET = 31
 };
 typedef enum llhttp_errno llhttp_errno_t;
 
@@ -275,6 +277,7 @@ typedef enum llhttp_status llhttp_status_t;
   XX(27, CB_STATUS_COMPLETE, CB_STATUS_COMPLETE) \
   XX(28, CB_HEADER_FIELD_COMPLETE, CB_HEADER_FIELD_COMPLETE) \
   XX(29, CB_HEADER_VALUE_COMPLETE, CB_HEADER_VALUE_COMPLETE) \
+  XX(31, CB_RESET, CB_RESET) \
 
 
 #define HTTP_METHOD_MAP(XX) \
@@ -507,6 +510,7 @@ struct llhttp_settings_s {
    */
   llhttp_cb      on_chunk_header;
   llhttp_cb      on_chunk_complete;
+  llhttp_cb      on_reset;
 };
 
 /* Initialize the parser with specific type and user settings.
@@ -698,6 +702,7 @@ void llhttp_set_lenient_chunked_length(llhttp_t* parser, int enabled);
  *
  * **(USE AT YOUR OWN RISK)**
  */
+LLHTTP_EXPORT
 void llhttp_set_lenient_keep_alive(llhttp_t* parser, int enabled);
 
 /* Enables/disables lenient handling of `Transfer-Encoding` header.
@@ -711,6 +716,7 @@ void llhttp_set_lenient_keep_alive(llhttp_t* parser, int enabled);
  *
  * **(USE AT YOUR OWN RISK)**
  */
+LLHTTP_EXPORT
 void llhttp_set_lenient_transfer_encoding(llhttp_t* parser, int enabled);
 
 #ifdef __cplusplus

@@ -522,6 +522,7 @@ enum llparse_state_e {
   s_n_llhttp__internal__n_req_or_res_method,
   s_n_llhttp__internal__n_start_req_or_res,
   s_n_llhttp__internal__n_invoke_load_type,
+  s_n_llhttp__internal__n_invoke_update_finish,
   s_n_llhttp__internal__n_start,
 };
 typedef enum llparse_state_e llparse_state_t;
@@ -543,6 +544,17 @@ int llhttp__on_body(
     const unsigned char* endp);
 
 int llhttp__on_status(
+    llhttp__internal_t* s, const unsigned char* p,
+    const unsigned char* endp);
+
+int llhttp__internal__c_load_initial_message_completed(
+    llhttp__internal_t* state,
+    const unsigned char* p,
+    const unsigned char* endp) {
+  return state->initial_message_completed;
+}
+
+int llhttp__on_reset(
     llhttp__internal_t* s, const unsigned char* p,
     const unsigned char* endp);
 
@@ -633,6 +645,14 @@ int llhttp__internal__c_is_equal_upgrade(
 int llhttp__after_message_complete(
     llhttp__internal_t* s, const unsigned char* p,
     const unsigned char* endp);
+
+int llhttp__internal__c_update_initial_message_completed(
+    llhttp__internal_t* state,
+    const unsigned char* p,
+    const unsigned char* endp) {
+  state->initial_message_completed = 1;
+  return 0;
+}
 
 int llhttp__internal__c_update_finish_1(
     llhttp__internal_t* state,
@@ -1078,7 +1098,7 @@ static llparse_state_t llhttp__internal__run(
     s_n_llhttp__internal__n_invoke_llhttp__after_message_complete: {
       switch (llhttp__after_message_complete(state, p, endp)) {
         case 1:
-          goto s_n_llhttp__internal__n_invoke_update_finish_2;
+          goto s_n_llhttp__internal__n_invoke_update_initial_message_completed;
         default:
           goto s_n_llhttp__internal__n_invoke_update_finish_1;
       }
@@ -5858,6 +5878,15 @@ static llparse_state_t llhttp__internal__run(
       /* UNREACHABLE */;
       abort();
     }
+    case s_n_llhttp__internal__n_invoke_update_finish:
+    s_n_llhttp__internal__n_invoke_update_finish: {
+      switch (llhttp__internal__c_update_finish(state, p, endp)) {
+        default:
+          goto s_n_llhttp__internal__n_invoke_llhttp__on_message_begin;
+      }
+      /* UNREACHABLE */;
+      abort();
+    }
     case s_n_llhttp__internal__n_start:
     s_n_llhttp__internal__n_start: {
       if (p == endp) {
@@ -5873,7 +5902,7 @@ static llparse_state_t llhttp__internal__run(
           goto s_n_llhttp__internal__n_start;
         }
         default: {
-          goto s_n_llhttp__internal__n_invoke_update_finish;
+          goto s_n_llhttp__internal__n_invoke_load_initial_message_completed;
         }
       }
       /* UNREACHABLE */;
@@ -5909,6 +5938,14 @@ static llparse_state_t llhttp__internal__run(
     /* UNREACHABLE */;
     abort();
   }
+  s_n_llhttp__internal__n_invoke_update_initial_message_completed: {
+    switch (llhttp__internal__c_update_initial_message_completed(state, p, endp)) {
+      default:
+        goto s_n_llhttp__internal__n_invoke_update_finish_2;
+    }
+    /* UNREACHABLE */;
+    abort();
+  }
   s_n_llhttp__internal__n_error_6: {
     state->error = 0x5;
     state->reason = "Data after `Connection: close`";
@@ -5921,7 +5958,7 @@ static llparse_state_t llhttp__internal__run(
   s_n_llhttp__internal__n_invoke_test_lenient_flags_1: {
     switch (llhttp__internal__c_test_lenient_flags_1(state, p, endp)) {
       case 1:
-        goto s_n_llhttp__internal__n_invoke_update_finish_2;
+        goto s_n_llhttp__internal__n_invoke_update_initial_message_completed;
       default:
         goto s_n_llhttp__internal__n_closed;
     }
@@ -8170,10 +8207,42 @@ static llparse_state_t llhttp__internal__run(
     /* UNREACHABLE */;
     abort();
   }
-  s_n_llhttp__internal__n_invoke_update_finish: {
-    switch (llhttp__internal__c_update_finish(state, p, endp)) {
+  s_n_llhttp__internal__n_pause_14: {
+    state->error = 0x15;
+    state->reason = "on_reset pause";
+    state->error_pos = (const char*) p;
+    state->_current = (void*) (intptr_t) s_n_llhttp__internal__n_invoke_update_finish;
+    return s_error;
+    /* UNREACHABLE */;
+    abort();
+  }
+  s_n_llhttp__internal__n_error_77: {
+    state->error = 0x1f;
+    state->reason = "`on_reset` callback error";
+    state->error_pos = (const char*) p;
+    state->_current = (void*) (intptr_t) s_error;
+    return s_error;
+    /* UNREACHABLE */;
+    abort();
+  }
+  s_n_llhttp__internal__n_invoke_llhttp__on_reset: {
+    switch (llhttp__on_reset(state, p, endp)) {
+      case 0:
+        goto s_n_llhttp__internal__n_invoke_update_finish;
+      case 21:
+        goto s_n_llhttp__internal__n_pause_14;
       default:
-        goto s_n_llhttp__internal__n_invoke_llhttp__on_message_begin;
+        goto s_n_llhttp__internal__n_error_77;
+    }
+    /* UNREACHABLE */;
+    abort();
+  }
+  s_n_llhttp__internal__n_invoke_load_initial_message_completed: {
+    switch (llhttp__internal__c_load_initial_message_completed(state, p, endp)) {
+      case 1:
+        goto s_n_llhttp__internal__n_invoke_llhttp__on_reset;
+      default:
+        goto s_n_llhttp__internal__n_invoke_update_finish;
     }
     /* UNREACHABLE */;
     abort();
@@ -8740,6 +8809,7 @@ enum llparse_state_e {
   s_n_llhttp__internal__n_req_or_res_method,
   s_n_llhttp__internal__n_start_req_or_res,
   s_n_llhttp__internal__n_invoke_load_type,
+  s_n_llhttp__internal__n_invoke_update_finish,
   s_n_llhttp__internal__n_start,
 };
 typedef enum llparse_state_e llparse_state_t;
@@ -8761,6 +8831,17 @@ int llhttp__on_body(
     const unsigned char* endp);
 
 int llhttp__on_status(
+    llhttp__internal_t* s, const unsigned char* p,
+    const unsigned char* endp);
+
+int llhttp__internal__c_load_initial_message_completed(
+    llhttp__internal_t* state,
+    const unsigned char* p,
+    const unsigned char* endp) {
+  return state->initial_message_completed;
+}
+
+int llhttp__on_reset(
     llhttp__internal_t* s, const unsigned char* p,
     const unsigned char* endp);
 
@@ -8851,6 +8932,14 @@ int llhttp__internal__c_is_equal_upgrade(
 int llhttp__after_message_complete(
     llhttp__internal_t* s, const unsigned char* p,
     const unsigned char* endp);
+
+int llhttp__internal__c_update_initial_message_completed(
+    llhttp__internal_t* state,
+    const unsigned char* p,
+    const unsigned char* endp) {
+  state->initial_message_completed = 1;
+  return 0;
+}
 
 int llhttp__internal__c_update_finish_1(
     llhttp__internal_t* state,
@@ -9284,7 +9373,7 @@ static llparse_state_t llhttp__internal__run(
     s_n_llhttp__internal__n_invoke_llhttp__after_message_complete: {
       switch (llhttp__after_message_complete(state, p, endp)) {
         case 1:
-          goto s_n_llhttp__internal__n_invoke_update_finish_2;
+          goto s_n_llhttp__internal__n_invoke_update_initial_message_completed;
         default:
           goto s_n_llhttp__internal__n_invoke_update_finish_1;
       }
@@ -13886,6 +13975,15 @@ static llparse_state_t llhttp__internal__run(
       /* UNREACHABLE */;
       abort();
     }
+    case s_n_llhttp__internal__n_invoke_update_finish:
+    s_n_llhttp__internal__n_invoke_update_finish: {
+      switch (llhttp__internal__c_update_finish(state, p, endp)) {
+        default:
+          goto s_n_llhttp__internal__n_invoke_llhttp__on_message_begin;
+      }
+      /* UNREACHABLE */;
+      abort();
+    }
     case s_n_llhttp__internal__n_start:
     s_n_llhttp__internal__n_start: {
       if (p == endp) {
@@ -13901,7 +13999,7 @@ static llparse_state_t llhttp__internal__run(
           goto s_n_llhttp__internal__n_start;
         }
         default: {
-          goto s_n_llhttp__internal__n_invoke_update_finish;
+          goto s_n_llhttp__internal__n_invoke_load_initial_message_completed;
         }
       }
       /* UNREACHABLE */;
@@ -13928,10 +14026,18 @@ static llparse_state_t llhttp__internal__run(
     /* UNREACHABLE */;
     abort();
   }
+  s_n_llhttp__internal__n_invoke_update_initial_message_completed: {
+    switch (llhttp__internal__c_update_initial_message_completed(state, p, endp)) {
+      default:
+        goto s_n_llhttp__internal__n_invoke_update_finish_2;
+    }
+    /* UNREACHABLE */;
+    abort();
+  }
   s_n_llhttp__internal__n_invoke_test_lenient_flags_1: {
     switch (llhttp__internal__c_test_lenient_flags_1(state, p, endp)) {
       case 1:
-        goto s_n_llhttp__internal__n_invoke_update_finish_2;
+        goto s_n_llhttp__internal__n_invoke_update_initial_message_completed;
       default:
         goto s_n_llhttp__internal__n_closed;
     }
@@ -16135,10 +16241,42 @@ static llparse_state_t llhttp__internal__run(
     /* UNREACHABLE */;
     abort();
   }
-  s_n_llhttp__internal__n_invoke_update_finish: {
-    switch (llhttp__internal__c_update_finish(state, p, endp)) {
+  s_n_llhttp__internal__n_pause_14: {
+    state->error = 0x15;
+    state->reason = "on_reset pause";
+    state->error_pos = (const char*) p;
+    state->_current = (void*) (intptr_t) s_n_llhttp__internal__n_invoke_update_finish;
+    return s_error;
+    /* UNREACHABLE */;
+    abort();
+  }
+  s_n_llhttp__internal__n_error_70: {
+    state->error = 0x1f;
+    state->reason = "`on_reset` callback error";
+    state->error_pos = (const char*) p;
+    state->_current = (void*) (intptr_t) s_error;
+    return s_error;
+    /* UNREACHABLE */;
+    abort();
+  }
+  s_n_llhttp__internal__n_invoke_llhttp__on_reset: {
+    switch (llhttp__on_reset(state, p, endp)) {
+      case 0:
+        goto s_n_llhttp__internal__n_invoke_update_finish;
+      case 21:
+        goto s_n_llhttp__internal__n_pause_14;
       default:
-        goto s_n_llhttp__internal__n_invoke_llhttp__on_message_begin;
+        goto s_n_llhttp__internal__n_error_70;
+    }
+    /* UNREACHABLE */;
+    abort();
+  }
+  s_n_llhttp__internal__n_invoke_load_initial_message_completed: {
+    switch (llhttp__internal__c_load_initial_message_completed(state, p, endp)) {
+      case 1:
+        goto s_n_llhttp__internal__n_invoke_llhttp__on_reset;
+      default:
+        goto s_n_llhttp__internal__n_invoke_update_finish;
     }
     /* UNREACHABLE */;
     abort();
