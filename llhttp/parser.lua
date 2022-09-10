@@ -43,7 +43,7 @@ end
 ---@return number http_version
 function Parser:get_http_version()
   -- upstream issue: https://github.com/nodejs/llhttp/issues/177
-  if not self._completed_url and not self._completed_status then
+  if not self._completed_headers and not self._completed_status then
     error("http_version not parsed yet")
   end
 
