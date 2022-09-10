@@ -230,7 +230,8 @@ int c_on_headers_complete(llhttp_t *parser) {
 int c_on_body(llhttp_t *parser, const char *at, size_t length) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
   _lua_llhttp__string_append(data->body, at, length);
-  if (data->llhttp->body_chunk_size_threshold <= data->body->len) {
+  if (parser->content_length > 0 &&
+      data->llhttp->body_chunk_size_threshold <= data->body->len) {
     data->llhttp->pause_cause = PAUSE_CAUSE_BODY_CHUNK_READY;
     return HPE_PAUSED;
   }
