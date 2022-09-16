@@ -90,13 +90,18 @@ string *_lua_llhttp__string_reset(string *str) {
 }
 
 void _lua_llhttp__string_append(string *str, const char *buf, size_t len) {
-  if (str->size < (str->len + len)) {
-    str->buf = realloc(str->buf, (2 * str->size) + 1);
-    str->size = 2 * str->size;
+  size_t new_len = str->len + len;
+  if (str->size < new_len) {
+    size_t new_size = str->size * 2;
+    while (new_size < new_len) {
+      new_size = new_size * 2;
+    }
+    str->buf = realloc(str->buf, new_size + 1);
+    str->size = new_size;
   }
 
   memcpy(str->buf + str->len, buf, len);
-  str->len = str->len + len;
+  str->len = new_len;
   str->buf[str->len] = '\0';
 }
 
