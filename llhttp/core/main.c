@@ -89,20 +89,29 @@ string *_lua_llhttp__string_reset(string *str) {
   return str;
 }
 
-void _lua_llhttp__string_append(string *str, const char *buf, size_t len) {
+// returns `0` if successful, `-1` otherwise.
+int _lua_llhttp__string_append(string *str, const char *buf, size_t len) {
   size_t new_len = str->len + len;
   if (str->size < new_len) {
     size_t new_size = str->size * 2;
     while (new_size < new_len) {
       new_size = new_size * 2;
     }
-    str->buf = realloc(str->buf, new_size + 1);
+
+    void *new_buf = realloc(str->buf, new_size + 1);
+    if (new_buf == NULL) {
+      return -1;
+    }
+
+    str->buf = new_buf;
     str->size = new_size;
   }
 
   memcpy(str->buf + str->len, buf, len);
   str->len = new_len;
   str->buf[str->len] = '\0';
+
+  return 0;
 }
 
 string_list *_lua_llhttp__string_list_new() {
@@ -127,13 +136,22 @@ string_list *_lua_llhttp__string_list_reset(string_list *list) {
   return list;
 }
 
-void _lua_llhttp__string_list_add(string_list *list) {
+// returns `0` if successful, `-1` otherwise.
+int _lua_llhttp__string_list_add(string_list *list) {
   if (list->size == list->len + 1) {
-    list->items = realloc(list->items, 2 * list->size * sizeof(list->items));
+    void *new_items =
+        realloc(list->items, 2 * list->size * sizeof(list->items));
+    if (new_items == NULL) {
+      return -1;
+    }
+
+    list->items = new_items;
     list->size = 2 * list->size;
   }
 
   list->items[list->len++] = _lua_llhttp__string_new();
+
+  return 0;
 }
 
 #define LUA_LLHTTP_META "llhttp.core.lua_llhttp"
@@ -194,12 +212,18 @@ DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_header_field);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_header_value);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_body);
 
+#define LUA_LLHTTP_HANDLE_C_CB_OOM(CB_NAME, OOM_ERRNO, FUNCTION_CALL)          \
+  if (OOM_ERRNO == FUNCTION_CALL) {                                            \
+    return luaL_error(data->llhttp->L, "out of memory (at %s)", CB_NAME);      \
+  }
+
 int c_on_message_begin(llhttp_t *parser) { return 0; }
 
 // request
 int c_on_url(llhttp_t *parser, const char *at, size_t length) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
-  _lua_llhttp__string_append(data->url, at, length);
+  LUA_LLHTTP_HANDLE_C_CB_OOM("on_url", -1,
+                             _lua_llhttp__string_append(data->url, at, length));
   return 0;
 }
 
@@ -209,20 +233,26 @@ int c_on_status(llhttp_t *parser, const char *at, size_t length) { return 0; }
 int c_on_header_field(llhttp_t *parser, const char *at, size_t length) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
   if (data->headers->len % 2 == 0) {
-    _lua_llhttp__string_list_add(data->headers);
+    LUA_LLHTTP_HANDLE_C_CB_OOM("on_header_field", -1,
+                               _lua_llhttp__string_list_add(data->headers));
   }
-  _lua_llhttp__string_append(data->headers->items[data->headers->len - 1], at,
-                             length);
+  LUA_LLHTTP_HANDLE_C_CB_OOM(
+      "on_header_field", -1,
+      _lua_llhttp__string_append(data->headers->items[data->headers->len - 1],
+                                 at, length));
   return 0;
 }
 
 int c_on_header_value(llhttp_t *parser, const char *at, size_t length) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
   if (data->headers->len % 2 == 1) {
-    _lua_llhttp__string_list_add(data->headers);
+    LUA_LLHTTP_HANDLE_C_CB_OOM("on_header_value", -1,
+                               _lua_llhttp__string_list_add(data->headers));
   }
-  _lua_llhttp__string_append(data->headers->items[data->headers->len - 1], at,
-                             length);
+  LUA_LLHTTP_HANDLE_C_CB_OOM(
+      "on_header_value", -1,
+      _lua_llhttp__string_append(data->headers->items[data->headers->len - 1],
+                                 at, length));
   return 0;
 }
 
@@ -234,7 +264,8 @@ int c_on_headers_complete(llhttp_t *parser) {
 
 int c_on_body(llhttp_t *parser, const char *at, size_t length) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
-  _lua_llhttp__string_append(data->body, at, length);
+  LUA_LLHTTP_HANDLE_C_CB_OOM(
+      "on_body", -1, _lua_llhttp__string_append(data->body, at, length));
   if (parser->content_length > 0 &&
       data->llhttp->body_chunk_size_threshold <= data->body->len) {
     data->llhttp->pause_cause = PAUSE_CAUSE_BODY_CHUNK_READY;
