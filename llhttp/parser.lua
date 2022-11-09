@@ -9,7 +9,9 @@ Parser.__index = Parser
 ---@return LLHTTPParser parser
 local function init(class, settings)
   local self = {
+    _completed_method = false,
     _completed_url = false,
+    _completed_version = false,
     _completed_status = false,
     _completed_headers = false,
   }
@@ -42,8 +44,7 @@ end
 
 ---@return number http_version
 function Parser:get_http_version()
-  -- upstream issue: https://github.com/nodejs/llhttp/issues/177
-  if not self._completed_headers and not self._completed_status then
+  if not self._completed_version then
     error("http_version not parsed yet")
   end
 
@@ -61,7 +62,7 @@ function Parser:get_method()
     error("only available for request parser")
   end
 
-  if not self._completed_url then
+  if not self._completed_method then
     error("method not parsed yet")
   end
 
@@ -96,7 +97,9 @@ end
 
 ---@return nil
 function Parser:reset()
+  self._completed_method = false
   self._completed_url = false
+  self._completed_version = false
   self._completed_status = false
   self._completed_headers = false
 
@@ -114,8 +117,12 @@ end
 function Parser:execute(buf)
   local err, consumed, pause_cause = self.llhttp:execute(buf)
   if err == enum.errno.PAUSED then
-    if pause_cause == enum.pause_cause.URL_COMPLETED then
+    if pause_cause == enum.pause_cause.METHOD_COMPLETED then
+      self._completed_method = true
+    elseif pause_cause == enum.pause_cause.URL_COMPLETED then
       self._completed_url = true
+    elseif pause_cause == enum.pause_cause.VERSION_COMPLETED then
+      self._completed_version = true
     elseif pause_cause == enum.pause_cause.STATUS_COMPLETED then
       self._completed_status = true
     elseif pause_cause == enum.pause_cause.HEADERS_COMPLETED then

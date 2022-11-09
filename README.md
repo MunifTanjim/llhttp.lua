@@ -28,7 +28,9 @@ while offset <= #request do
   local err, consumed, pause_cause = parser:execute(buf)
 
   if err == enum.errno.PAUSED then
-    if pause_cause == enum.pause_cause.URL_COMPLETED then
+    if pause_cause == enum.pause_cause.METHOD_COMPLETED then
+      data.method = parser:get_method()
+    elseif pause_cause == enum.pause_cause.URL_COMPLETED then
       data.url = parser:pull_url()
     elseif pause_cause == enum.pause_cause.HEADERS_COMPLETED then
       data.headers = parser:pull_headers()
@@ -56,7 +58,7 @@ while offset <= #request do
   offset = offset + consumed
 end
 
-print(data.url)
+print(string.format("%s %s", data.method, data.url))
 print("=======")
 for k, v in pairs(data.headers) do
   print(string.format("%s: %s", k, v))

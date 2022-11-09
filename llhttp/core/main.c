@@ -24,12 +24,14 @@ typedef struct {
 
 enum lua_llhttp_pause_cause {
   PAUSE_CAUSE_UNKNOWN = 0,
-  PAUSE_CAUSE_URL_COMPLETED = 1,
-  PAUSE_CAUSE_STATUS_COMPLETED = 2,
-  PAUSE_CAUSE_HEADERS_COMPLETED = 3,
-  PAUSE_CAUSE_BODY_CHUNK_READY = 4,
-  PAUSE_CAUSE_MESSAGE_COMPLETED_WITH_BODY_CHUNK = 5,
-  PAUSE_CAUSE_MESSAGE_COMPLETED = 6
+  PAUSE_CAUSE_METHOD_COMPLETED = 1,
+  PAUSE_CAUSE_URL_COMPLETED = 2,
+  PAUSE_CAUSE_VERSION_COMPLETED = 3,
+  PAUSE_CAUSE_STATUS_COMPLETED = 4,
+  PAUSE_CAUSE_HEADERS_COMPLETED = 5,
+  PAUSE_CAUSE_BODY_CHUNK_READY = 6,
+  PAUSE_CAUSE_MESSAGE_COMPLETED_WITH_BODY_CHUNK = 7,
+  PAUSE_CAUSE_MESSAGE_COMPLETED = 8
 };
 typedef enum lua_llhttp_pause_cause lua_llhttp_pause_cause_t;
 
@@ -49,18 +51,26 @@ struct lua_llhttp_s {
   size_t body_chunk_size_threshold;
   struct {
     int on_message_begin;
+    int on_method;
     int on_url;
+    int on_version;
     int on_status;
     int on_header_field;
     int on_header_value;
     int on_headers_complete;
     int on_body;
     int on_message_complete;
+    int on_method_complete;
     int on_url_complete;
+    int on_version_complete;
     int on_status_complete;
     int on_header_field_complete;
     int on_header_value_complete;
     int on_chunk_header;
+    int on_chunk_extension_name;
+    int on_chunk_extension_name_complete;
+    int on_chunk_extension_value;
+    int on_chunk_extension_value_complete;
     int on_chunk_complete;
     int on_reset;
   } cb_ref;
@@ -198,18 +208,26 @@ int _lua_llhttp__string_list_add(string_list *list) {
 DEFINE_LUA_LLHTTP_CALLBACK(on_message_begin);
 DEFINE_LUA_LLHTTP_CALLBACK(on_headers_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_message_complete);
+DEFINE_LUA_LLHTTP_CALLBACK(on_method_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_url_complete);
+DEFINE_LUA_LLHTTP_CALLBACK(on_version_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_status_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_header_field_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_header_value_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_chunk_header);
+DEFINE_LUA_LLHTTP_CALLBACK(on_chunk_extension_name_complete);
+DEFINE_LUA_LLHTTP_CALLBACK(on_chunk_extension_value_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_chunk_complete);
 DEFINE_LUA_LLHTTP_CALLBACK(on_reset);
 
+DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_method);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_url);
+DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_version);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_status);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_header_field);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_header_value);
+DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_chunk_extension_name);
+DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_chunk_extension_value);
 DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_body);
 
 #define LUA_LLHTTP_HANDLE_C_CB_OOM(CB_NAME, OOM_ERRNO, FUNCTION_CALL)          \
@@ -220,12 +238,18 @@ DEFINE_LUA_LLHTTP_DATA_CALLBACK(on_body);
 int c_on_message_begin(llhttp_t *parser) { return 0; }
 
 // request
+int c_on_method(llhttp_t *parser, const char *at, size_t length) { return 0; }
+
+// request
 int c_on_url(llhttp_t *parser, const char *at, size_t length) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
   LUA_LLHTTP_HANDLE_C_CB_OOM("on_url", -1,
                              _lua_llhttp__string_append(data->url, at, length));
   return 0;
 }
+
+// request/response
+int c_on_version(llhttp_t *parser, const char *at, size_t length) { return 0; }
 
 // response
 int c_on_status(llhttp_t *parser, const char *at, size_t length) { return 0; }
@@ -256,6 +280,15 @@ int c_on_header_value(llhttp_t *parser, const char *at, size_t length) {
   return 0;
 }
 
+int c_on_chunk_extension_name(llhttp_t *parser, const char *at, size_t length) {
+  return 0;
+}
+
+int c_on_chunk_extension_value(llhttp_t *parser, const char *at,
+                               size_t length) {
+  return 0;
+}
+
 int c_on_headers_complete(llhttp_t *parser) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
   data->llhttp->pause_cause = PAUSE_CAUSE_HEADERS_COMPLETED;
@@ -283,9 +316,23 @@ int c_on_message_complete(llhttp_t *parser) {
 }
 
 // request
+int c_on_method_complete(llhttp_t *parser) {
+  lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
+  data->llhttp->pause_cause = PAUSE_CAUSE_METHOD_COMPLETED;
+  return HPE_PAUSED;
+}
+
+// request
 int c_on_url_complete(llhttp_t *parser) {
   lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
   data->llhttp->pause_cause = PAUSE_CAUSE_URL_COMPLETED;
+  return HPE_PAUSED;
+}
+
+// request/response
+int c_on_version_complete(llhttp_t *parser) {
+  lua_llhttp_data_t *data = (lua_llhttp_data_t *)parser->data;
+  data->llhttp->pause_cause = PAUSE_CAUSE_VERSION_COMPLETED;
   return HPE_PAUSED;
 }
 
@@ -301,6 +348,10 @@ int c_on_header_field_complete(llhttp_t *parser) { return 0; }
 int c_on_header_value_complete(llhttp_t *parser) { return 0; }
 
 int c_on_chunk_header(llhttp_t *parser) { return 0; }
+
+int c_on_chunk_extension_name_complete(llhttp_t *parser) { return 0; }
+
+int c_on_chunk_extension_value_complete(llhttp_t *parser) { return 0; }
 
 int c_on_chunk_complete(llhttp_t *parser) { return 0; }
 
@@ -389,14 +440,18 @@ int lua_llhttp_create_parser(lua_State *L) {
 
   if (has_custom_settings) {
     REGISTER_LUA_LLHTTP_CALLBACK(on_message_begin);
+    REGISTER_LUA_LLHTTP_CALLBACK(on_method);
     REGISTER_LUA_LLHTTP_CALLBACK(on_url);
+    REGISTER_LUA_LLHTTP_CALLBACK(on_version);
     REGISTER_LUA_LLHTTP_CALLBACK(on_status);
     REGISTER_LUA_LLHTTP_CALLBACK(on_header_field);
     REGISTER_LUA_LLHTTP_CALLBACK(on_header_value);
     REGISTER_LUA_LLHTTP_CALLBACK(on_headers_complete);
     REGISTER_LUA_LLHTTP_CALLBACK(on_message_complete);
     REGISTER_LUA_LLHTTP_CALLBACK(on_body);
+    REGISTER_LUA_LLHTTP_CALLBACK(on_method_complete);
     REGISTER_LUA_LLHTTP_CALLBACK(on_url_complete);
+    REGISTER_LUA_LLHTTP_CALLBACK(on_version_complete);
     REGISTER_LUA_LLHTTP_CALLBACK(on_status_complete);
     REGISTER_LUA_LLHTTP_CALLBACK(on_header_field_complete);
     REGISTER_LUA_LLHTTP_CALLBACK(on_header_value_complete);
@@ -625,14 +680,18 @@ int lua_llhttp__gc(lua_State *L) {
     luaL_unref(L, LUA_REGISTRYINDEX, lua_llhttp->data.ref);
 
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_message_begin);
+    UNREGISTER_LUA_LLHTTP_CALLBACK(on_method);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_url);
+    UNREGISTER_LUA_LLHTTP_CALLBACK(on_version);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_status);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_header_field);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_header_value);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_headers_complete);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_message_complete);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_body);
+    UNREGISTER_LUA_LLHTTP_CALLBACK(on_method_complete);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_url_complete);
+    UNREGISTER_LUA_LLHTTP_CALLBACK(on_version_complete);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_status_complete);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_header_field_complete);
     UNREGISTER_LUA_LLHTTP_CALLBACK(on_header_value_complete);
@@ -696,23 +755,36 @@ static const luaL_reg lua_llhttp_funcs[] = {
 
 #define LUA_LLHTTP_SETTINGS_INIT(LANG)                                         \
   llhttp_settings_init(&lua_llhttp_##LANG##_settings);                         \
-  lua_llhttp_##LANG##_settings.on_url = LANG##_on_url;                         \
   lua_llhttp_##LANG##_settings.on_message_begin = LANG##_on_message_begin;     \
+  lua_llhttp_##LANG##_settings.on_method = LANG##_on_method;                   \
+  lua_llhttp_##LANG##_settings.on_url = LANG##_on_url;                         \
+  lua_llhttp_##LANG##_settings.on_version = LANG##_on_version;                 \
   lua_llhttp_##LANG##_settings.on_status = LANG##_on_status;                   \
   lua_llhttp_##LANG##_settings.on_header_field = LANG##_on_header_field;       \
   lua_llhttp_##LANG##_settings.on_header_value = LANG##_on_header_value;       \
   lua_llhttp_##LANG##_settings.on_headers_complete =                           \
       LANG##_on_headers_complete;                                              \
+  lua_llhttp_##LANG##_settings.on_chunk_extension_name =                       \
+      LANG##_on_chunk_extension_name;                                          \
+  lua_llhttp_##LANG##_settings.on_chunk_extension_value =                      \
+      LANG##_on_chunk_extension_value;                                         \
   lua_llhttp_##LANG##_settings.on_body = LANG##_on_body;                       \
   lua_llhttp_##LANG##_settings.on_message_complete =                           \
       LANG##_on_message_complete;                                              \
+  lua_llhttp_##LANG##_settings.on_method_complete = LANG##_on_method_complete; \
   lua_llhttp_##LANG##_settings.on_url_complete = LANG##_on_url_complete;       \
+  lua_llhttp_##LANG##_settings.on_version_complete =                           \
+      LANG##_on_version_complete;                                              \
   lua_llhttp_##LANG##_settings.on_status_complete = LANG##_on_status_complete; \
   lua_llhttp_##LANG##_settings.on_header_field_complete =                      \
       LANG##_on_header_field_complete;                                         \
   lua_llhttp_##LANG##_settings.on_header_value_complete =                      \
       LANG##_on_header_value_complete;                                         \
   lua_llhttp_##LANG##_settings.on_chunk_header = LANG##_on_chunk_header;       \
+  lua_llhttp_##LANG##_settings.on_chunk_extension_name_complete =              \
+      LANG##_on_chunk_extension_name_complete;                                 \
+  lua_llhttp_##LANG##_settings.on_chunk_extension_value_complete =             \
+      LANG##_on_chunk_extension_value_complete;                                \
   lua_llhttp_##LANG##_settings.on_chunk_complete = LANG##_on_chunk_complete;   \
   lua_llhttp_##LANG##_settings.on_reset = LANG##_on_reset;
 
